@@ -9,7 +9,7 @@ import { isDripSuccessResponse } from "../../guards";
 import { logger } from "../../logger";
 import { getNetworkData } from "../../networkData";
 import { DripResponse } from "../../types";
-import { getApiInstance } from "./polkadotApi";
+import AvailApi, { disApi, getApiInstance } from "./polkadotApi";
 import { formatAmount } from "./utils";
 
 const mnemonic = config.Get("FAUCET_ACCOUNT_MNEMONIC");
@@ -20,7 +20,7 @@ const networkName = config.Get("NETWORK");
 const networkData = getNetworkData(networkName);
 
 const rpcTimeout = (service: string) => {
-  const timeout = 30000;
+  const timeout = 50000;
   return setTimeout(() => {
     // log an error in console and in prometheus if the timeout is reached
     logger.error(`⭕ Oops, ${service} took more than ${timeout}ms to answer`);
@@ -134,8 +134,18 @@ export class PolkadotActions {
         try {
           logger.warn("⚠️First try failed, retrying with backup", e);
           if (this.backup_account) {
-            const hash = await transfer.signAndSend(this.backup_account, options);
-            res = hash.toHex();
+            const api = await AvailApi();
+            await api.isReady;
+            try {
+              const tx = api.tx.balances.transferKeepAlive(address, amount);
+              const hash = await tx.signAndSend(this.backup_account, options);
+              res = hash.toHex();
+            } catch (err) {
+              logger.error("⭕ An error occured when sending tokens", err);
+            } finally {
+              await new Promise((resolve) => setTimeout(resolve, 10000));
+              disApi(api);
+            }
           }
         } catch {
           logger.error("⭕ An error occured when sending tokens", e);
