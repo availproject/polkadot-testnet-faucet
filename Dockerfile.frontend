@@ -8,8 +8,13 @@ RUN yarn --frozen-lockfile
 
 COPY ./client .
 
-EXPOSE 5173
+ARG PUBLIC_FAUCET_URL="https://faucet.sandbox.avail.tools/drip/web"
+ARG PUBLIC_CAPTCHA_KEY=""
 
-ENTRYPOINT [ "yarn" ]
+RUN PUBLIC_FAUCET_URL=$PUBLIC_FAUCET_URL PUBLIC_CAPTCHA_KEY=$PUBLIC_CAPTCHA_KEY yarn build
 
-CMD ["dev", "--host"]
+EXPOSE 3000
+
+ENTRYPOINT [ "node" ]
+
+CMD ["build/index.js"]
