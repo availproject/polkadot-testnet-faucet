@@ -5,9 +5,8 @@ let apiInstance: ApiPromise | null = null;
 const Endpoint = process.env.WS_URL || "wss://rpc-goldberg.sandbox.avail.tools";
 export const getApiInstance = async () => {
   if (apiInstance) {
-    console.log("Using existing API instance");
     if (apiInstance.isConnected) {
-      console.log("API instance is connected");
+      console.log("Existing API instance is connected");
       return apiInstance;
     } else {
       console.log("API instance is not connected");

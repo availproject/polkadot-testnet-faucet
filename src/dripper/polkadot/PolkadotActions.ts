@@ -9,7 +9,7 @@ import { isDripSuccessResponse } from "../../guards";
 import { logger } from "../../logger";
 import { getNetworkData } from "../../networkData";
 import { DripResponse } from "../../types";
-import AvailApi, { disApi, getApiInstance } from "./polkadotApi";
+import { getApiInstance } from "./polkadotApi";
 import { formatAmount } from "./utils";
 
 const mnemonic = config.Get("FAUCET_ACCOUNT_MNEMONIC");
@@ -121,7 +121,7 @@ export class PolkadotActions {
       // start a counter and log a timeout error if we didn't get an answer in time
       dripTimeout = rpcTimeout("drip");
       logger.info("💸 sending tokens");
-      const polkadotApi = await AvailApi();
+      const polkadotApi = await getApiInstance();
       const options = { app_id: 0, nonce: -1 };
       await polkadotApi.isReady;
       const transfer = polkadotApi.tx.balances.transferKeepAlive(address, amount);
@@ -143,7 +143,6 @@ export class PolkadotActions {
       }
       await new Promise((resolve) => setTimeout(resolve, 20000));
       result = { hash: res };
-      disApi(polkadotApi);
       // }
     } catch (e) {
       result = { error: (e as Error).message || "An error occured when sending tokens" };
