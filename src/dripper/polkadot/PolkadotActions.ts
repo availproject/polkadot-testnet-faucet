@@ -9,7 +9,7 @@ import { isDripSuccessResponse } from "../../guards";
 import { logger } from "../../logger";
 import { getNetworkData } from "../../networkData";
 import { DripResponse } from "../../types";
-import AvailApi, { disApi, getApiInstance } from "./polkadotApi";
+import { getApiInstance } from "./polkadotApi";
 import { formatAmount } from "./utils";
 
 const mnemonic = config.Get("FAUCET_ACCOUNT_MNEMONIC");
@@ -134,7 +134,7 @@ export class PolkadotActions {
         try {
           logger.warn("⚠️First try failed, retrying with backup", e);
           if (this.backup_account) {
-            const api = await AvailApi();
+            const api = await getApiInstance();
             await api.isReady;
             try {
               const tx = api.tx.balances.transferKeepAlive(address, amount);
@@ -142,9 +142,6 @@ export class PolkadotActions {
               res = hash.toHex();
             } catch (err) {
               logger.error("⭕ An error occured when sending tokens", err);
-            } finally {
-              await new Promise((resolve) => setTimeout(resolve, 10000));
-              disApi(api);
             }
           }
         } catch {
