@@ -9,7 +9,7 @@ declare global {
   }
 
   declare interface Window {
-    grecaptcha?: Captcha;
+    turnstile?: Captcha;
     captchaLoaded: () => void;
     onToken: (token: string) => void;
     onExpiredToken: () => void;

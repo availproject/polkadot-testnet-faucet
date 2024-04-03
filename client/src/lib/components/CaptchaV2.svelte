@@ -22,11 +22,11 @@
           : theme;
       const mobileScreen = window.innerHeight > window.innerWidth;
 
-      if (!window.grecaptcha) {
+      if (!window.turnstile) {
         captchaError = true;
-        throw new Error("grecaptcha is undefined!");
+        throw new Error("Turnstile is undefined!");
       }
-      window.grecaptcha.render(captchaId, {
+      window.turnstile.render("#captcha_element", {
         sitekey: captchaKey,
         theme: colorTheme,
         callback: "onToken",
@@ -52,7 +52,7 @@
 
 <svelte:head>
   {#if componentMounted}
-    <script src="https://www.google.com/recaptcha/api.js?onload=captchaLoaded&render=explicit" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=captchaLoaded&render=explicit" async defer></script>
   {/if}
 </svelte:head>
 
