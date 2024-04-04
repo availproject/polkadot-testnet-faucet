@@ -16,7 +16,7 @@ export class Recaptcha {
       const params = new URLSearchParams();
       params.append("secret", this.secret);
       params.append("response", captcha);
-      const captchaResult = await axios.post("https://www.google.com/recaptcha/api/siteverify", params);
+      const captchaResult = await axios.post("https://challenges.cloudflare.com/turnstile/v0/siteverify", params);
       if (captchaResult.data.success === true) return true;
       logger.debug("Negative recaptcha validation result", captchaResult.data);
       return false;
