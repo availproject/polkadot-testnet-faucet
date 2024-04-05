@@ -168,7 +168,7 @@ export class PolkadotActions {
                       const add = JSON.parse(addr);
                       const tf = api.tx.balances.transferKeepAlive(add, amount);
                       vec.push(tf);
-                      await client.SREM(key, transactions[addr]);
+                      await client.SREM(key, addr);
                     }
                     const hash = await api.tx.utility.batch(vec).signAndSend(acc, options);
                     res = hash.toHex();
