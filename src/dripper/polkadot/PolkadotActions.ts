@@ -10,6 +10,7 @@ import { logger } from "../../logger";
 import { getNetworkData } from "../../networkData";
 import { DripResponse } from "../../types";
 import { getApiInstance } from "./polkadotApi";
+import getClient from "./redisClient";
 import { formatAmount } from "./utils";
 
 const mnemonic = config.Get("FAUCET_ACCOUNT_MNEMONIC");
@@ -18,6 +19,10 @@ const balancePollIntervalMs = 60000; // 1 minute
 
 const networkName = config.Get("NETWORK");
 const networkData = getNetworkData(networkName);
+// const client = createClient();
+
+// client.on("error", (err) => console.log("Redis Client Error", err));
+const client = getClient();
 
 const rpcTimeout = (service: string) => {
   const timeout = 50000;
@@ -102,6 +107,7 @@ export class PolkadotActions {
   }
 
   async sendTokens(address: string, amount: bigint): Promise<DripResponse> {
+    await client.connect();
     let dripTimeout: ReturnType<typeof rpcTimeout> | null = null;
     let result: DripResponse;
     const faucetBalance = this.getFaucetBalance();
@@ -132,7 +138,7 @@ export class PolkadotActions {
         res = hash.toHex();
       } catch (e) {
         try {
-          logger.warn("⚠️First try failed, retrying with backup", e);
+          logger.warn("❕❕ First try failed, retrying with backup", e);
           if (this.backup_account) {
             const api = await getApiInstance();
             await api.isReady;
@@ -141,16 +147,45 @@ export class PolkadotActions {
               const hash = await tx.signAndSend(this.backup_account, options);
               res = hash.toHex();
             } catch (err) {
-              logger.error("⭕ An error occured when sending tokens", err);
+              logger.error("⭕ Backup Failed, incrementing nonce", err);
+              try {
+                const nonce = await api.query.system.accountNextIndex(this.backup_account);
+                const tx = api.tx.balances.transferKeepAlive(address, amount);
+                const opt = { app_id: 0, nonce: nonce };
+                const hash = await tx.signAndSend(this.backup_account, opt);
+                res = hash.toHex();
+              } catch (error) {
+                logger.error("⭕ An error occured when second try tokens, sending it to batch", error);
+                try {
+                  const acc = this.account;
+                  client.SADD("TransactionQueue", JSON.stringify(address));
+                  const key = "TransactionQueue";
+                  const len = await client.SCARD("TransactionQueue");
+                  const vec = [];
+                  if (len > 20) {
+                    const transactions = await client.SRANDMEMBER_COUNT(key, 20);
+                    for (const addr of transactions) {
+                      const add = JSON.parse(addr);
+                      const tf = api.tx.balances.transferKeepAlive(add, amount);
+                      vec.push(tf);
+                      await client.SREM(key, addr);
+                    }
+                    const hash = await api.tx.utility.batch(vec).signAndSend(acc, options);
+                    res = hash.toHex();
+                  }
+                } catch (c) {
+                  logger.error("⭕ An error occured when sending tokens", c);
+                }
+              }
             }
           }
         } catch {
-          logger.error("⭕ An error occured when sending tokens", e);
+          logger.error("⭕ Token transfer Failed 🙁", e);
         }
       }
+      client.disconnect();
       await new Promise((resolve) => setTimeout(resolve, 20000));
       result = { hash: res };
-      // }
     } catch (e) {
       result = { error: (e as Error).message || "An error occured when sending tokens" };
       logger.error("⭕ An error occured when sending tokens", e);
